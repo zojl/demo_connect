@@ -56,11 +56,11 @@ class ConnectionAdapterFactory
 
     /**
      * @param string $serviceCode
-     * @param string $serviceType
+     * @param string|null $serviceType
      * @return AbstractConnectionServiceAdapter
-     * @throws Exception|InvalidArgumentException
+     * @throws Exception
      */
-    public function createConnection(string $serviceCode, string $serviceType): AbstractConnectionServiceAdapter
+    public function createConnection(string $serviceCode, string $serviceType = null): AbstractConnectionServiceAdapter
     {
         $connectionClasses = array_merge($this->getAvailableSmsServices(), $this->getAvailableCallServices());
         if (!array_key_exists($serviceCode, $connectionClasses)) {
@@ -68,21 +68,23 @@ class ConnectionAdapterFactory
                 sprintf('Connection service with code %s is not exists', $serviceCode));
         }
 
-        if (!in_array($serviceType, [self::SERVICE_TYPE_CALL, self::SERVICE_TYPE_SMS])) {
-            throw new InvalidArgumentException(sprintf('Invalid connection type %s', $serviceType));
-        }
-
         $connection = new $connectionClasses[$serviceCode]();
         if (!($connection instanceof AbstractConnectionServiceAdapter)) {
             throw new Exception(sprintf('%s is not valid connection service adapter', $connection[$serviceCode]));
         }
 
-        if ($serviceType == self::SERVICE_TYPE_CALL && !($connection instanceof CallServiceAdapterInterface)) {
-            throw new InvalidArgumentException(sprintf('Calls via %s service are not available', $serviceCode));
-        }
+        if (!is_null($serviceType)) {
+            if (!in_array($serviceType, [self::SERVICE_TYPE_CALL, self::SERVICE_TYPE_SMS])) {
+                throw new InvalidArgumentException(sprintf('Invalid connection type %s', $serviceType));
+            }
 
-        if ($serviceType == self::SERVICE_TYPE_SMS && !($connection instanceof SmsServiceAdapterInterface)) {
-            throw new InvalidArgumentException(sprintf('Sms sending via %s service is not available', $serviceCode));
+            if ($serviceType == self::SERVICE_TYPE_CALL && !($connection instanceof CallServiceAdapterInterface)) {
+                throw new InvalidArgumentException(sprintf('Calls via %s service are not available', $serviceCode));
+            }
+
+            if ($serviceType == self::SERVICE_TYPE_SMS && !($connection instanceof SmsServiceAdapterInterface)) {
+                throw new InvalidArgumentException(sprintf('Sms sending via %s service is not available', $serviceCode));
+            }
         }
 
         return $connection;
